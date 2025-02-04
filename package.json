@@ -1,7 +1,7 @@
 {
   "name": "@cocojs/typescript-transformer-autowired",
-  "version": "0.0.1",
-  "description": "",
+  "version": "0.0.2",
+  "description": "补充autowired装饰器的参数",
   "main": "dist/index.js",
   "files": [
     "dist"
@@ -10,6 +10,6 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
+  "author": "jiangchenguang",
   "license": "MIT"
 }
