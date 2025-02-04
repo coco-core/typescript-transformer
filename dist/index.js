@@ -15,7 +15,7 @@ function transformer(program) {
                             // 检查是否是装饰器调用（如 @a()）
                             if (ts.isCallExpression(decoratorExpression) &&
                               ts.isIdentifier(decoratorExpression.expression) &&
-                              decoratorExpression.expression.text === 'autowired') {
+                              decoratorExpression.expression.text === 'autowired' || decoratorExpression.expression.text === 'reactiveAutowired') {
                                 // 获取属性的类型
                                 const type = node.type ? node.type.getText(sourceFile) : 'unknown';
                                 // 创建类型字符串字面量节点
