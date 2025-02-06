@@ -1,4 +1,4 @@
-import * as ts from "typescript";
+import ts from "typescript";
 
 function transformer(program: ts.Program) {
   return function (context: ts.TransformationContext) {
@@ -12,13 +12,17 @@ function transformer(program: ts.Program) {
             if (ts.isDecorator(modifier)) {
               const decoratorExpression = modifier.expression;
               // 检查是否是装饰器调用（如 @a()）
+              let type;
               if (ts.isCallExpression(decoratorExpression) &&
                 ts.isIdentifier(decoratorExpression.expression) &&
-                (decoratorExpression.expression.text === 'autowired' || decoratorExpression.expression.text === 'reactiveAutowired')) {
-                // 获取属性的类型
-                const type = node.type ? node.type.getText(sourceFile) : 'unknown';
+                (decoratorExpression.expression.text === 'autowired' || decoratorExpression.expression.text === 'reactiveAutowired') &&
+                node.type &&
+                ts.isTypeReferenceNode(node.type) &&
+                (type = node.type.getText(sourceFile)) &&
+                ['String', "Number", "Boolean", "Object", "Array", "Function", "Symbol"].indexOf(type) === -1
+              ) {
                 // 创建类型字符串字面量节点
-                const typeNode = ts.factory.createIdentifier(type);
+                const args = type ? [ts.factory.createIdentifier(type)] : [];
                 // 修改装饰器调用，将类型作为参数传递
                 return ts.factory.updateDecorator(
                   modifier,
@@ -26,7 +30,7 @@ function transformer(program: ts.Program) {
                     decoratorExpression,
                     decoratorExpression.expression,
                     undefined,
-                    [typeNode]
+                    args
                   )
                 );
               }
