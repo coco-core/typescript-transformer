@@ -1,12 +1,17 @@
 import ts, {SyntaxKind} from "typescript";
 import {config as c1} from "./autowired";
 import {config as c2} from "./component";
+import {config as c3} from "./constructor-param";
 
+const classTransformList: {decoratorName: string; transformer: Function}[] = [];
 const propertyTransformList: {decoratorName: string; transformer: Function}[] = [];
 const methodTransformList: {decoratorName: string; transformer: Function}[] = [];
 function register(kind: ts.SyntaxKind, decoratorName: string, transformer: Function) {
   let list;
   switch (kind) {
+    case SyntaxKind.ClassDeclaration:
+      list = classTransformList;
+      break;
     case SyntaxKind.PropertyDeclaration:
       list = propertyTransformList;
       break;
@@ -25,7 +30,7 @@ function register(kind: ts.SyntaxKind, decoratorName: string, transformer: Funct
   }
 }
 
-[...c1, ...c2].forEach(({ kind, name, transformer}) => {
+[...c1, ...c2, ...c3].forEach(({ kind, name, transformer}) => {
   register(kind, name, transformer);
 })
 
@@ -33,7 +38,40 @@ function transformer(program: ts.Program) {
   return function (context: ts.TransformationContext) {
     return function (sourceFile: ts.SourceFile) {
       function visit(node: ts.Node): ts.Node {
-        if (ts.isPropertyDeclaration(node)) {
+        if (ts.isClassDeclaration(node)) {
+          const decorators = (node.modifiers || []).map(modifier => {
+            // 检查是否是装饰器
+            if (ts.isDecorator(modifier)) {
+              const decoratorExpression = modifier.expression;
+              let find;
+              // 检查是否是装饰器调用（如 @a()）
+              if (ts.isCallExpression(decoratorExpression) &&
+                ts.isIdentifier(decoratorExpression.expression) &&
+                (find = classTransformList.find(i => i.decoratorName === decoratorExpression.expression.getText(sourceFile)))
+              ) {
+                const args = find.transformer(modifier, node, sourceFile);
+                return ts.factory.updateDecorator(
+                  modifier,
+                  ts.factory.updateCallExpression(
+                    decoratorExpression,
+                    decoratorExpression.expression,
+                    undefined,
+                    args
+                  )
+                )
+              }
+            }
+            return modifier;
+          });
+          return ts.factory.updateClassDeclaration(
+            node,
+            decorators,
+            node.name,
+            node.typeParameters,
+            node.heritageClauses,
+            ts.visitNodes(node.members, visit) as unknown as ts.ClassElement[]
+          );
+        } else if (ts.isPropertyDeclaration(node)) {
           const decorators = (node.modifiers || []).map((modifier: ts.Decorator) => {
             if (ts.isDecorator(modifier)) {
               const decoratorExpression = modifier.expression;
