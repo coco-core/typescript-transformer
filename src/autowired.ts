@@ -1,6 +1,6 @@
-import ts from "typescript";
+import ts, {SyntaxKind} from "typescript";
 
-export function transformer(node: ts.PropertyDeclaration, sourceFile: ts.SourceFile): ts.Expression[] {
+function transformer(modifier: ts.Decorator, node: ts.PropertyDeclaration, sourceFile: ts.SourceFile): ts.Expression[] {
     let type;
     if (
       node.type &&
@@ -14,4 +14,7 @@ export function transformer(node: ts.PropertyDeclaration, sourceFile: ts.SourceF
     return [];
 }
 
-export const decoratorNames = ['autowired', 'reactiveAutowired'];
+export const config = [
+  { kind: SyntaxKind.PropertyDeclaration, name: 'autowired', transformer },
+  { kind: SyntaxKind.PropertyDeclaration, name: 'reactiveAutowired', transformer },
+];
