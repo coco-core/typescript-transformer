@@ -1,4 +1,4 @@
-const { transpile } = require('./helper/transpile');
+const { transpile } = require('../_helper/transpile');
 
 describe('reactiveAutowired', () => {
   test('成功解析', async () => {

@@ -1,4 +1,4 @@
-const { transpile } = require('./helper/transpile');
+const { transpile } = require('../_helper/transpile');
 
 describe('autowired', () => {
   test('成功', async () => {
