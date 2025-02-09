@@ -1,7 +1,7 @@
 {
-  "name": "@cocojs/typescript-transformer-autowired",
-  "version": "0.0.4",
-  "description": "补充autowired装饰器的参数",
+  "name": "@cocojs/typescript-transformer",
+  "version": "0.0.1",
+  "description": "",
   "main": "dist/index.js",
   "files": [
     "dist"
