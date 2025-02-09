@@ -1,44 +1,49 @@
-import ts from "typescript";
+import ts, {PropertyDeclaration} from "typescript";
+import {decoratorNames, transformer as autowiredTransformer} from "./autowired";
+
+const propertyTransformList: {decoratorName: string; transformer: Function}[] = [];
+function register(decoratorName: string, transformer: Function) {
+  const find = propertyTransformList.find(i => i.decoratorName === decoratorName)
+  if (!find) {
+    propertyTransformList.push({ decoratorName, transformer })
+  } else {
+    // 目前一个装饰器对应一个transformer,且每个transformer也只处理对应的装饰器表达式
+    throw new Error(`${decoratorName}存在多个transformer`);
+  }
+}
+
+decoratorNames.forEach(decoratorName => register(decoratorName, autowiredTransformer));
 
 function transformer(program: ts.Program) {
   return function (context: ts.TransformationContext) {
     return function (sourceFile: ts.SourceFile) {
       function visit(node: ts.Node): ts.Node {
-        // 检查是否是属性声明节点
         if (ts.isPropertyDeclaration(node)) {
-          // 遍历修饰符（包括装饰器）
           const decorators = (node.modifiers || []).map((modifier: ts.Decorator) => {
-            // 检查是否是装饰器
-            if (ts.isDecorator(modifier)) {
-              const decoratorExpression = modifier.expression;
-              // 检查是否是装饰器调用（如 @a()）
-              let type;
-              if (ts.isCallExpression(decoratorExpression) &&
-                ts.isIdentifier(decoratorExpression.expression) &&
-                (decoratorExpression.expression.text === 'autowired' || decoratorExpression.expression.text === 'reactiveAutowired') &&
-                node.type &&
-                ts.isTypeReferenceNode(node.type) &&
-                (type = node.type.getText(sourceFile)) &&
-                ['String', "Number", "Boolean", "Object", "Array", "Function", "Symbol"].indexOf(type) === -1
-              ) {
-                // 创建类型字符串字面量节点
-                const args = type ? [ts.factory.createIdentifier(type)] : [];
-                // 修改装饰器调用，将类型作为参数传递
-                return ts.factory.updateDecorator(
-                  modifier,
-                  ts.factory.updateCallExpression(
-                    decoratorExpression,
-                    decoratorExpression.expression,
-                    undefined,
-                    args
-                  )
-                );
-              }
+          // 检查是否是装饰器
+          if (ts.isDecorator(modifier)) {
+            const decoratorExpression = modifier.expression;
+            // 检查是否是装饰器调用（如 @a()）
+            let find;
+            if (ts.isCallExpression(decoratorExpression) &&
+              ts.isIdentifier(decoratorExpression.expression) &&
+              (find = propertyTransformList.find(i => i.decoratorName === decoratorExpression.expression.getText(sourceFile)))
+            ) {
+              const args = find.transformer(node, sourceFile);
+              // 修改装饰器调用，将类型作为参数传递
+              return ts.factory.updateDecorator(
+                modifier,
+                ts.factory.updateCallExpression(
+                  decoratorExpression,
+                  decoratorExpression.expression,
+                  undefined,
+                  args
+                )
+              );
             }
-            return modifier;
-          });
-
-          // 更新属性声明节点
+          }
+          return modifier;
+        });
           return ts.factory.updatePropertyDeclaration(
             node,
             decorators,
@@ -47,8 +52,9 @@ function transformer(program: ts.Program) {
             node.type,
             node.initializer
           );
+        } else {
+          return ts.visitEachChild(node, visit, context);
         }
-        return ts.visitEachChild(node, visit, context);
       }
       return ts.visitNode(sourceFile, visit);
     };
